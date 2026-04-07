@@ -1,9 +1,9 @@
 const axios = require("axios");
 const crypto = require("crypto");
-// const Article = require("../models/Article");
-const Article = require("../");
+const Article = require("../models/Article");
 
-// 🔥 USER STOCKS (later from DB)
+// 🔥 USER STOCKS (later from DB)  
+
 const TRACKED_STOCKS = [
   { name: "Reliance", symbol: "RELIANCE" },
   { name: "TCS", symbol: "TCS" },
