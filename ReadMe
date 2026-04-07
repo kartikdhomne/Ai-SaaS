@@ -1,0 +1,46 @@
+backend/
+│
+├── config/
+│   └── db.js                # MongoDB connection
+│
+├── models/
+│   ├── Article.js           # News articles
+│   ├── User.js              # Users (future alerts)
+│   └── Stock.js             # User tracked stocks
+│
+├── services/                # 🔥 CORE BUSINESS LOGIC
+│   ├── newsAggregator.js    # Multi-API fetch + filter + store
+│   ├── finnhubService.js    # Finnhub API logic
+│   ├── marketauxService.js  # Marketaux API logic
+│   ├── alertService.js      # Telegram/Email/WhatsApp (next)
+│   └── aiService.js         # AI chat (STEP 4)
+│
+├── cron/
+│   └── newsCron.js          # Runs every 15 min
+│
+├── controllers/             # Request handlers
+│   ├── articleController.js
+│   ├── userController.js
+│   └── alertController.js
+│
+├── routes/                  # API routes
+│   ├── articleRoutes.js
+│   ├── userRoutes.js
+│   └── alertRoutes.js
+│
+├── utils/                   # 🔧 HELPERS
+│   ├── hash.js              # Dedup hash logic
+│   ├── stockMatcher.js      # Match news ↔ stocks
+│   ├── importance.js        # News scoring
+│   └── logger.js            # Optional logging
+│
+├── middleware/
+│   ├── authMiddleware.js    # JWT auth (future)
+│   └── errorMiddleware.js
+│
+├── jobs/                    # (optional advanced queue later)
+│   └── notificationJob.js
+│
+├── .env
+├── server.js
+└── package.json
