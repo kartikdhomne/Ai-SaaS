@@ -2,9 +2,9 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const connectDB = require("./config/db");
+const userRoutes = require("./routes/userRoutes");
 
-// 🔥 ADD THIS
-const startNewsCron = require("./cron/newsCron");
+const { startNewsCron } = require("./cron/newsCron");
 
 const newsRoutes = require("./routes/newsRoutes");
 
@@ -14,6 +14,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use("/api/news", newsRoutes);
+app.use("/api/users", userRoutes);
 
 // test route
 app.get("/", (req, res) => {
@@ -23,18 +24,14 @@ app.get("/", (req, res) => {
 const PORT = process.env.PORT || 5000;
 
 const start = async () => {
-    try {
-        await connectDB();
+    await connectDB();
 
-        // 🔥 START CRON AFTER DB CONNECTS
-        startNewsCron();
+    // 🚀 START CRON
+    startNewsCron();
 
-        app.listen(PORT, () => {
-            console.log(`🔥 Server running on port ${PORT}`);
-        });
-    } catch (error) {
-        console.error("❌ Server start error:", error);
-    }
+    app.listen(PORT, () => {
+        console.log(`🔥 Server running on port ${PORT}`);
+    });
 };
 
 start();

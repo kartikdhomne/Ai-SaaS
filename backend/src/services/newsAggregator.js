@@ -1,16 +1,11 @@
 const axios = require("axios");
 const crypto = require("crypto");
-const Article = require("../../models/articles");
 
-// 🔥 USER STOCKS (later from DB)  
+const Article = require("../models/articles");
+const User = require("../models/user");
 
-const TRACKED_STOCKS = [
-  { name: "Reliance", symbol: "RELIANCE" },
-  { name: "TCS", symbol: "TCS" },
-  { name: "HDFC Bank", symbol: "HDFCBANK" },
-];
+const { sendTelegramAlert } = require("../services/alertServices");
 
-// 🔥 KEYWORDS FOR PRIORITY
 const IMPORTANT_KEYWORDS = [
   "earnings",
   "profit",
@@ -20,25 +15,14 @@ const IMPORTANT_KEYWORDS = [
   "ipo",
 ];
 
-// 🧠 STOCK MATCHING
-const matchStocks = (article) => {
-  const text = (article.title + " " + article.description).toLowerCase();
-
-  return TRACKED_STOCKS.filter(
-    (stock) =>
-      text.includes(stock.name.toLowerCase()) ||
-      text.includes(stock.symbol.toLowerCase()),
-  ).map((s) => s.symbol);
-};
-
-// 🧠 IMPORTANCE SCORE
 const getImportance = (title) => {
-  return IMPORTANT_KEYWORDS.some((k) => title.toLowerCase().includes(k))
+  return IMPORTANT_KEYWORDS.some((k) =>
+    title.toLowerCase().includes(k)
+  )
     ? 1
     : 0;
 };
 
-// 🧠 HASH (DEDUP)
 const generateHash = (article) => {
   return crypto
     .createHash("md5")
@@ -46,7 +30,6 @@ const generateHash = (article) => {
     .digest("hex");
 };
 
-// 🔥 FETCH FROM FINNHUB
 const fetchFinnhub = async () => {
   const { data } = await axios.get("https://finnhub.io/api/v1/news", {
     params: {
@@ -65,14 +48,17 @@ const fetchFinnhub = async () => {
   }));
 };
 
-// 🔥 FETCH FROM MARKETAUX
 const fetchMarketaux = async () => {
-  const { data } = await axios.get("https://api.marketaux.com/v1/news/all", {
-    params: {
-      api_token: process.env.MARKETAUX_API_KEY,
-      language: "en",
-    },
-  });
+  const { data } = await axios.get(
+    "https://api.marketaux.com/v1/news/all",
+    {
+      params: {
+        api_token: process.env.MARKETAUX_API_KEY,
+        language: "en",
+        countries: "in",
+      },
+    }
+  );
 
   return data.data.map((item) => ({
     title: item.title,
@@ -96,25 +82,60 @@ const fetchAndStoreNews = async () => {
 
     const allNews = [...finnhubNews, ...marketauxNews];
 
+    // ✅ FETCH USERS ONCE
+    const users = await User.find();
+
     for (let article of allNews) {
+      console.log("👉 Checking:", article.title);
+
       const hash = generateHash(article);
 
-      const exists = await Article.findOne({ hash });
-      if (exists) continue;
-
-      const matchedStocks = matchStocks(article);
-      if (matchedStocks.length === 0) continue;
+      // ❌ skip duplicates
+      // const exists = await Article.findOne({ hash });
+      // if (exists) {
+      //   console.log("⏭️ Skipped duplicate");
+      //   continue;
+      // }
 
       const importance = getImportance(article.title);
 
+      // ✅ STORE ARTICLE (no stock dependency now)
       await Article.create({
         ...article,
-        stocks: matchedStocks,
         hash,
         importance,
       });
 
       console.log("✅ Stored:", article.title);
+
+      // 🔥 USER-BASED ALERT LOGIC
+      for (let user of users) {
+        const userStocks = user.stocks || [];
+
+        const matchedStocks = userStocks.filter((stock) =>
+          (article.title + " " + article.description)
+            .toLowerCase()
+            .includes(stock.toLowerCase())
+        );
+
+        if (matchedStocks.length === 0) continue;
+
+        console.log(
+          `📊 Match for ${user.email}:`,
+          matchedStocks
+        );
+
+        // ✅ ONLY IMPORTANT NEWS (optional)
+        if (importance === 1) {
+          console.log("📲 Sending alert to user...");
+
+          await sendTelegramAlert({
+            ...article,
+            stocks: matchedStocks,
+            chatId: user.telegramChatId,
+          });
+        }
+      }
     }
 
     console.log("🎉 News aggregation complete");

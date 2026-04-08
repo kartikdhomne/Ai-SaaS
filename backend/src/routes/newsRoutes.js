@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 
-const { fetchAndStoreNews } = require("../services/news/newsAggregator");
+const { fetchAndStoreNews } = require("../services/newsAggregator");
 
 // 🧪 Test route
 router.get("/test-news", async (req, res) => {
